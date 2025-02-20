@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import os
+from rapidfuzz import fuzz
 
 app = Flask(__name__)
 
@@ -13,82 +14,100 @@ user_sessions = {}
 # Create the upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Define valid registration types
+valid_types = ["doctor", "health facility", "school"]
+
+def match_intent(user_message, options, threshold=80):
+    """Match user input against a list of options with a similarity threshold."""
+    for option in options:
+        if fuzz.ratio(user_message.lower(), option.lower()) > threshold:
+            return option
+    return None
+
 @app.route('/')
-def homme():
-    return 'welcome to the chatbot'
+def home():
+    return 'Welcome to the chatbot!'
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_id = request.json.get("user_id")  # Unique identifier for the user
-    user_message = request.json.get("message").lower()
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        user_message = data.get("message").strip().lower()
 
-    if user_id not in user_sessions:
-        user_sessions[user_id] = {"step": 0, "info": {}, "type": None}
+        if not user_id or not user_message:
+            return jsonify({"response": "Invalid request. Please provide a user ID and message."}), 400
 
-    session = user_sessions[user_id]
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {"step": 0, "info": {}, "type": None}
 
-    if session["step"] == 0:
-        if "register doctor" in user_message:
-            session["type"] = "doctor"
-            session["step"] = 1
-            return jsonify({"response": "What is the doctor's name?"})
-        elif "register health facility" in user_message:
-            session["type"] = "health facility"
-            session["step"] = 1
-            return jsonify({"response": "What is the health facility's name?"})
-        elif "register school" in user_message:
-            session["type"] = "school"
-            session["step"] = 1
-            return jsonify({"response": "What is the school's name?"})
+        session = user_sessions[user_id]
 
-    elif session["step"] == 1:
-        session["info"]["name"] = user_message
-        session["step"] = 2
-        return jsonify({"response": f"What is the {session['type']}'s email?"})
+        # Step 0: Initial Registration Selection
+        if session["step"] == 0:
+            matched_type = match_intent(user_message, valid_types)
+            if matched_type:
+                session["type"] = matched_type
+                session["step"] = 1
+                return jsonify({"response": f"What is the {matched_type}'s name?"})
+            return jsonify({"response": "Would you like to register as a health facility, school, or a doctor?"})
 
-    elif session["step"] == 2:
-        session["info"]["email"] = user_message
-        session["step"] = 3
-        return jsonify({"response": f"What is the {session['type']}'s phone number?"})
+        # Step 1: Collect Name
+        elif session["step"] == 1:
+            session["info"]["name"] = user_message
+            session["step"] = 2
+            return jsonify({"response": f"What is the {session['type']}'s email?"})
 
-    elif session["step"] == 3:
-        session["info"]["phone"] = user_message
-        session["step"] = 4
-        return jsonify({"response": f"Please upload the {session['type']}'s license document (PDF)."})
+        # Step 2: Collect Email
+        elif session["step"] == 2:
+            session["info"]["email"] = user_message
+            session["step"] = 3
+            return jsonify({"response": f"What is the {session['type']}'s phone number?"})
 
+        # Step 3: Collect Phone Number
+        elif session["step"] == 3:
+            session["info"]["phone"] = user_message
+            session["step"] = 4
+            return jsonify({"response": f"Please upload the {session['type']}'s license document (PDF)."})
 
-    elif session["step"] == 4:
-        if 'file' not in request.files:
-            return jsonify({"response": "No file uploaded."}), 400
-        file = request.files['file']
+        # Step 4: Handle License Upload Confirmation
+        elif session["step"] == 4:
+            if "upload" in user_message:
+                session["step"] = 5
+                return jsonify({"response": f"{session['type'].capitalize()} registration completed! Do you want to register another entity?"})
+            return jsonify({"response": "Please confirm once you have uploaded the document by typing 'uploaded'."})
 
-        if file.filename == '':
-            return jsonify({"response": "No file selected."}), 400
+        # Step 5: Reset or Continue
+        elif session["step"] == 5:
+            matched_type = match_intent(user_message, valid_types)
+            if matched_type:
+                session["type"] = matched_type
+                session["step"] = 1
+                return jsonify({"response": f"What is the {matched_type}'s name?"})
+            return jsonify({"response": "Thank you! If you need to register another entity, please specify: health facility, school, or doctor."})
 
-        if file and file.filename.endswith('.pdf'):
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(file_path)
+        return jsonify({"response": "Unexpected input. Please follow the registration process."})
 
-            # Save the license file path in session info
-            session["info"]["license_file"] = file_path
-
-            # Here, you can save the information to a database
-            info = session["info"]
-            # Reset the session after registration is complete
-            type_name = session["type"]
-            session["step"] = 0
-            session["info"] = {}
-            session["type"] = None
-            return jsonify({
-                "response": f"{type_name.capitalize()} {info['name']} registered successfully!"
-            })
-        else:
-            return jsonify({"response": "Please upload a valid PDF file."}), 400
-
-    else:
-        return jsonify({"response": "Would you like to register as a health facility, school or a doctor?"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable or default to 5000
-    app.run(host='0.0.0.0', port=port)
+    # Start the Flask app
+    app.run(host='0.0.0.0', port=5000, debug=False)  # Ensure debug is set to False
 
+    # User interaction loop
+    user_id = input("Enter your user ID: ")
+
+    print("You can start chatting with the bot. Type 'exit' to quit.")
+    
+    while True:
+        user_message = input("You: ")
+        if user_message.lower() == "exit":
+            break
+
+        response = requests.post("http://127.0.0.1:5000/chat", json={"user_id": user_id, "message": user_message})
+        
+        if response.status_code == 200:
+            print("Chatbot:", response.json().get("response"))
+        else:
+            print("Error:", response.text)
