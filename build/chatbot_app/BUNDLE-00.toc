@@ -1,0 +1,3 @@
+([('chatbot_app',
+   '/Users/ketiai/Desktop/serugo/dist/chatbot_app',
+   'EXECUTABLE')],)
