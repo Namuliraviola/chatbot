@@ -13,6 +13,10 @@ user_sessions = {}
 # Create the upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+@app.route('/')
+def homme():
+    return 'welcome to the chatbot'
+
 @app.route('/chat', methods=['POST'])
 def chat():
     user_id = request.json.get("user_id")  # Unique identifier for the user
@@ -82,7 +86,7 @@ def chat():
             return jsonify({"response": "Please upload a valid PDF file."}), 400
 
     else:
-        return jsonify({"response": "I can help with registering health facilities, doctors, and schools. What would you like to do?"})
+        return jsonify({"response": "Would you like to register as a health facility, school or a doctor?"})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
