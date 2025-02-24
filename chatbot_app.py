@@ -1,7 +1,5 @@
 import streamlit as st
-from streamlit.web import cli as stcli
-import sys
-import webview
+import subprocess
 
 class StreamlitApp:
     def __init__(self, port=8501):
@@ -51,13 +49,9 @@ class StreamlitApp:
         return f"You said: {user_message}"
 
     def create_application(self):
-        # Start the Streamlit server in the main thread
-        sys.argv = ["streamlit", "run", __file__, f"--server.port={self.port}", "--server.headless=true"]
-        stcli.main()
-
-        # Create desktop window after starting Streamlit
-        webview.create_window("Chatbot Application", f"http://localhost:{self.port}", width=800, height=600, resizable=True)
-        webview.start()
+        # Start the Streamlit server
+        command = ["streamlit", "run", __file__, f"--server.port={self.port}", "--server.headless=true"]
+        subprocess.Popen(command)
 
 if __name__ == "__main__":
     app = StreamlitApp()

@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Define the Flask chatbot API endpoint
-CHATBOT_API_URL ="https://chatbot-bsa3aihbkwxfo3pckgml3d.streamlit.app/chat" # Use this if running locally
+CHATBOT_API_URL = "http://127.0.0.1:5000/chat"  # Use HTTP for local development
 
 # Streamlit UI setup
 st.set_page_config(page_title="Chatbot", layout="centered")
@@ -43,13 +43,13 @@ def send_message():
             else:
                 bot_reply = f"Error: {response.status_code} - {response.text}"
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             bot_reply = f"Error communicating with chatbot: {str(e)}"
 
         # Append chatbot response to chat history
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
 
-        # Clear the text input field by using the Streamlit API
-        st.session_state.user_input = ""  # This is fine to reset here after the callback
+        # Clear the text input field
+        st.session_state.user_input = ""  # Reset input field after sending message
 
 # The text input will trigger the send_message function when the user presses Enter.

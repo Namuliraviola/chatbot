@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 from rapidfuzz import fuzz
+import logging
 
 app = Flask(__name__)
 
@@ -17,6 +18,9 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Define valid registration types
 valid_types = ["doctor", "health facility", "school"]
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
 def match_intent(user_message, options, threshold=80):
     """Match user input against a list of options with a similarity threshold."""
     for option in options:
@@ -31,13 +35,19 @@ def home():
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
+        # Check if request is JSON
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON."}), 400
+        
         data = request.json
         user_id = data.get("user_id")
         user_message = data.get("message", "").strip().lower()
 
+        # Validate user ID and message
         if not user_id or not user_message:
-            return jsonify({"response": "Invalid request. Provide a user ID and message."}), 400
+            return jsonify({"error": "Invalid request. Provide a user ID and message."}), 400
 
+        # Initialize user session if not exists
         if user_id not in user_sessions:
             user_sessions[user_id] = {"step": 0, "info": {}, "type": None}
 
@@ -89,7 +99,8 @@ def chat():
         return jsonify({"response": "Unexpected input. Please follow the registration process."})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Error processing request: {str(e)}")
+        return jsonify({"error": "An error occurred while processing your request."}), 500
 
 if __name__ == '__main__':
     # Start Flask without user input loop
