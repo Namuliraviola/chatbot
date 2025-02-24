@@ -2,7 +2,6 @@ import streamlit as st
 from streamlit.web import cli as stcli
 import sys
 import webview
-import threading
 
 class StreamlitApp:
     def __init__(self, port=8501):
@@ -51,23 +50,15 @@ class StreamlitApp:
         # For now, it just echoes the user message
         return f"You said: {user_message}"
 
-    def run_server(self):
-        sys.argv = ["streamlit", "run", __file__, f"--server.port={self.port}", "--server.headless=true"]
-        sys.exit(stcli.main())
-
     def create_application(self):
-        # Start Streamlit server in a separate thread
-        server_thread = threading.Thread(target=self.run_server)
-        server_thread.daemon = True
-        server_thread.start()
+        # Start the Streamlit server in the main thread
+        sys.argv = ["streamlit", "run", __file__, f"--server.port={self.port}", "--server.headless=true"]
+        stcli.main()
 
-        # Create desktop window
+        # Create desktop window after starting Streamlit
         webview.create_window("Chatbot Application", f"http://localhost:{self.port}", width=800, height=600, resizable=True)
         webview.start()
 
 if __name__ == "__main__":
     app = StreamlitApp()
-    if len(sys.argv) > 1 and sys.argv[1] == "streamlit":
-        app.run_streamlit()
-    else:
-        app.create_application()
+    app.create_application()
