@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Define the Flask chatbot API endpoint
-CHATBOT_API_URL = "http://127.0.0.1:5000/chat"  # Use this if running locally
+CHATBOT_API_URL ="https://chatbot-bsa3aihbkwxfo3pckgml3d.streamlit.app/chat" # Use this if running locally
 
 # Streamlit UI setup
 st.set_page_config(page_title="Chatbot", layout="centered")
