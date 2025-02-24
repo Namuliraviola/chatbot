@@ -15,7 +15,7 @@ while True:
     try:
         # Send user input to chatbot API
         response = requests.post(
-            "https://127.0.0.1:5000/chat", 
+            "http://127.0.0.1:5000/chat",  # Change to HTTP
             json={"user_id": user_id, "message": user_message},
             timeout=5  # Add timeout to prevent hanging
         )
